@@ -28,6 +28,7 @@
             prefix-icon="iconfont icon-3702mima"
             type="password"
             placeholder="请输入密码"
+            @keyup.enter.native="login"
           ></el-input>
         </el-form-item>
         <!-- 按钮区域 -->
