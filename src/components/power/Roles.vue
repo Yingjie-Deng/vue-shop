@@ -11,7 +11,7 @@
       <!-- 添加角色按钮区域 -->
       <el-row>
         <el-col>
-          <el-button type="primary">添加角色</el-button>
+          <el-button type="primary" @click="showaddRole">添加角色</el-button>
         </el-col>
       </el-row>
 
@@ -70,9 +70,9 @@
               size="mini"
               type="primary"
               icon="el-icon-edit"
-              @click="editRights(scope.row.id)"
+              @click="modifyRights(scope.row.id)"
             >编辑</el-button>
-            <el-button size="mini" type="danger" icon="el-icon-delete">删除</el-button>
+            <el-button size="mini" type="danger" icon="el-icon-delete" @click="delRule(scope.row.id)">删除</el-button>
             <el-button
               size="mini"
               type="warning"
@@ -105,6 +105,58 @@
         <el-button type="primary" @click="allotRights">确 定</el-button>
       </span>
     </el-dialog>
+    <!-- 添加角色对话框 -->
+    <el-dialog
+      title="添加角色"
+      :visible.sync="addRoleDialogVisible"
+      width="50%"
+      @close="addRuleDialogClosed"
+    >
+      <el-form
+        :model="addRuleForm"
+        :rules="addRuleFromRules"
+        ref="addRuleFormRef"
+        label-width="100px"
+        class="demo-ruleForm"
+      >
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="addRuleForm.roleName"></el-input>
+        </el-form-item>
+        <el-form-item label="角色描述" prop="roleDesc">
+          <el-input v-model="addRuleForm.roleDesc"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="addRoleDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="addRole">确 定</el-button>
+      </span>
+    </el-dialog>
+    <!-- 编辑角色对话框 -->
+    <el-dialog
+      title="编辑角色"
+      :visible.sync="modifyRoleDialogVisible"
+      width="50%"
+      @close="modifyRuleDialogClosed"
+    >
+      <el-form
+        :model="modifyRuleForm"
+        :rules="addRuleFromRules"
+        ref="modifyRuleFormRef"
+        label-width="100px"
+        class="demo-ruleForm"
+      >
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="modifyRuleForm.roleName"></el-input>
+        </el-form-item>
+        <el-form-item label="角色描述" prop="roleDesc">
+          <el-input v-model="modifyRuleForm.roleDesc"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="modifyRoleDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="modifyRole">确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 <script>
@@ -121,12 +173,34 @@ export default {
       // 树形控件的属性绑定对象
       treeProps: {
         label: 'authName',
-        children: 'children'
+        children: 'children',
       },
       // 默认选中的节点ID值数组
       defKeys: [],
       // 当前即将分配权限的角色id
-      roleId: ''
+      roleId: '',
+      // 控制添加角色对话框的显示与隐藏
+      addRoleDialogVisible: false,
+      // 待添加角色的临时数据
+      addRuleForm: {
+        roleName: '',
+        roleDesc: '',
+      },
+      // 待添加角色验证规则对象
+      // 待修改角色共用
+      addRuleFromRules: {
+        roleName: [
+          { required: true, message: '请输入角色名！', trigger: 'blur' },
+        ],
+      },
+      // 控制 编辑角色 对话框的显示与隐藏
+      modifyRoleDialogVisible: false,
+      // 保存 编辑角色 时的临时数据
+      modifyRuleForm: {
+        roleId: '',
+        roleName: '',
+        roleDesc: '',
+      },
     };
   },
   created() {
@@ -151,9 +225,9 @@ export default {
         {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
-          type: 'warning'
+          type: 'warning',
         }
-      ).catch(err => err);
+      ).catch((err) => err);
       if (confirmResult !== 'confirm') {
         return this.$message.info('已取消删除！');
       }
@@ -187,7 +261,7 @@ export default {
       if (!node.children) {
         return arr.push(node.id);
       }
-      node.children.forEach(item => this.getLeafKeys(item, arr));
+      node.children.forEach((item) => this.getLeafKeys(item, arr));
     },
     // 监听分配权限对话框的关闭事件
     // 法二：打开对话框的时候就先初始化，再递归查询
@@ -200,7 +274,7 @@ export default {
     async allotRights() {
       const keys = [
         ...this.$refs.treeRef.getCheckedKeys(),
-        ...this.$refs.treeRef.getHalfCheckedKeys()
+        ...this.$refs.treeRef.getHalfCheckedKeys(),
       ];
       const idStr = keys.join(',');
       const { data: res } = await this.$http.post(
@@ -213,8 +287,79 @@ export default {
       this.$message.success('分配权限成功！');
       this.getRolesList();
       this.setRightDialogVisible = false;
+    },
+    // 点击按钮，展示添加角色对话框
+    showaddRole() {
+      this.addRoleDialogVisible = true;
+    },
+    // 点击按钮，添加角色
+    addRole() {
+      this.$refs.addRuleFormRef.validate(async (valid) => {
+        if (!valid) {
+          return this.$message({ type: 'error', message: '请输入角色名！' });
+        }
+        const { data: res } = await this.$http.post('roles', this.addRuleForm);
+        if (res.meta.status !== 201) {
+          return this.$message({ type: 'error', message: '添加角色失败！' });
+        }
+        this.getRolesList();
+        this.$message({ type: 'success', message: '添加角色成功！' });
+        this.addRoleDialogVisible = false;
+      });
+    },
+    // 监听 添加角色 对话框的关闭事件
+    addRuleDialogClosed() {
+      this.$refs.addRuleFormRef.resetFields();
+    },
+    // 点击按钮，显示修改角色对话框
+    modifyRights(id) {
+      this.modifyRuleForm.roleId = id;
+      this.modifyRoleDialogVisible = true;
+    },
+    // 监听 编辑角色对话框 的关闭事件
+    modifyRuleDialogClosed() {
+      this.$refs.modifyRuleFormRef.resetFields();
+      this.modifyRuleForm.roleId = '';
+    },
+    // 点击按钮，提交角色修改
+    modifyRole() {
+      this.$refs.modifyRuleFormRef.validate(async (valid) => {
+        if (!valid) {
+          return this.$message({ type: 'error', message: '请输入角色名称！' });
+        }
+        const { data: res } = await this.$http.put(
+          'roles/' + this.modifyRuleForm.roleId,
+          {
+            roleName: this.modifyRuleForm.roleName,
+            roleDesc: this.modifyRuleForm.roleDesc,
+          }
+        );
+        if (res.meta.status !== 200) {
+          return this.$message({ type: 'error', message: '修改角色失败！' });
+        }
+        this.getRolesList();
+        this.$message({ type: 'success', message: '角色修改成功！' });
+        this.modifyRoleDialogVisible = false;
+      });
+    },
+    // 删除角色
+    async delRule(id) {
+      const confirmRet = await this.$confirm('此操作将永久删除该角色, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).catch(err => err);
+        if (confirmRet !== 'confirm') {
+          return this.$message({type: 'info', message: '已取消删除！'});
+        }
+        const {data: res} = await this.$http.delete('roles/' + id);
+        if (res.meta.status !== 200) {
+          return this.$messge({type: 'error', message: '删除角色失败！'});
+        }
+        this.getRolesList();
+        this.$message({type: 'success', message: '删除角色成功！'});
     }
-  }
+  },
 };
 </script>
 <style lang="less" scoped>
