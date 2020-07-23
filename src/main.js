@@ -6,6 +6,8 @@ import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 // 导入字体图标库
 import './assets/fonts/iconfont.css'
+// 导入vue-table-with-tree-grid
+import ZkTable from 'vue-table-with-tree-grid'
 // 导入axios
 import axios from 'axios'
 // 配置请求的根路径
@@ -18,6 +20,7 @@ axios.interceptors.request.use(config => {
 Vue.prototype.$http = axios;
 
 Vue.use(ElementUI);
+Vue.component('tree-table', ZkTable);
 
 Vue.config.productionTip = false
 
